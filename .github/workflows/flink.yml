@@ -24,7 +24,7 @@ on:
 
 env:
   MAVEN_OPTS: >-
-    -Xmx2g
+    -Xmx4g
     --add-opens=java.base/java.nio=org.apache.arrow.memory.core,ALL-UNNAMED
     --add-opens=java.base/sun.nio.ch=org.apache.arrow.memory.core,ALL-UNNAMED
     --add-opens=java.base/java.lang=ALL-UNNAMED
@@ -84,12 +84,12 @@ jobs:
           git clone -b gluten-0530 https://github.com/bigo-sg/velox4j.git
           cd velox4j && git reset --hard 115edf79d265a61c30d45dfcc6ce932ad92378ca
           git apply $GITHUB_WORKSPACE/gluten-flink/patches/fix-velox4j.patch
-          $GITHUB_WORKSPACE/build/mvn clean install -DskipTests -Dgpg.skip -Dspotless.skip=true
+          $GITHUB_WORKSPACE/build/mvn clean install -T 1C -DskipTests -Dgpg.skip -Dspotless.skip=true
           cd ..
           ccache -s
           git clone https://github.com/nexmark/nexmark.git
           cd nexmark
-          $GITHUB_WORKSPACE/build/mvn clean install -DskipTests
+          $GITHUB_WORKSPACE/build/mvn clean install -T 1C -DskipTests
       - name: Save ccache
         if: always()
         uses: actions/cache/save@v4
@@ -99,7 +99,7 @@ jobs:
       - name: Build Gluten Flink
         run: |
           cd $GITHUB_WORKSPACE/gluten-flink
-          $GITHUB_WORKSPACE/build/mvn clean package -Dmaven.test.skip=true
+          $GITHUB_WORKSPACE/build/mvn clean package -T 1C -Dmaven.test.skip=true
       - name: Run Unit Tests
         run: |
           cd $GITHUB_WORKSPACE/gluten-flink
