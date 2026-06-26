@@ -91,7 +91,7 @@ jobs:
           cd nexmark
           $GITHUB_WORKSPACE/build/mvn clean install -DskipTests
       - name: Save ccache
-        if: always()
+        if: success()
         uses: actions/cache/save@v4
         with:
           path: '${{ env.CCACHE_DIR }}'
