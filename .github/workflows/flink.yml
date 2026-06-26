@@ -60,7 +60,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: '${{ env.CCACHE_DIR }}'
-          key: ccache-flink-centos8-${{github.sha}}
+          key: ccache-flink-centos8
           restore-keys: |
             ccache-flink-centos8
       - name: Prepare
@@ -95,7 +95,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: '${{ env.CCACHE_DIR }}'
-          key: ccache-flink-centos8-${{github.sha}}
+          key: ccache-flink-centos8
       - name: Build Gluten Flink
         run: |
           cd $GITHUB_WORKSPACE/gluten-flink
