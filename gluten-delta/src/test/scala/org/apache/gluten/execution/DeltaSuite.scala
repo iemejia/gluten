@@ -833,4 +833,30 @@ abstract class DeltaSuite extends WholeStageTransformerSuite {
         assert(deltaScans.nonEmpty, "Delta plan should contain DeltaScanTransformer")
     }
   }
+
+  test("scanFilters returns consistent results on repeated access") {
+    withTempPath {
+      p =>
+        import testImplicits._
+        val path = p.getCanonicalPath
+        Seq((1, "a"), (2, "b"), (3, "c")).toDF("id", "value")
+          .coalesce(1)
+          .write
+          .format("delta")
+          .save(path)
+        val df = spark.read.format("delta").load(path).where("id > 1")
+        val plan = df.queryExecution.executedPlan
+        val scans = plan.collect { case s: DeltaScanTransformer => s }
+
+        if (scans.nonEmpty) {
+          val scan = scans.head
+          // scanFilters is now a lazy val; repeated calls should return the same instance
+          val first = scan.scanFilters
+          val second = scan.scanFilters
+          val third = scan.scanFilters
+          assert(first eq second, "scanFilters should return the same cached instance")
+          assert(second eq third, "scanFilters should return the same cached instance")
+        }
+    }
+  }
 }
