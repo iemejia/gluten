@@ -16,6 +16,8 @@
  */
 package org.apache.gluten.execution
 
+import org.apache.gluten.extension.DeltaPostTransformRules
+
 import org.apache.spark.SparkConf
 import org.apache.spark.sql.Row
 import org.apache.spark.sql.types._
@@ -792,6 +794,43 @@ abstract class DeltaSuite extends WholeStageTransformerSuite {
         _ =>
       }
       checkAnswer(df, Row(0, null) :: Row(101, Seq(Row("a", 1), null)) :: Nil)
+    }
+  }
+
+  test("post-transform rules are no-op on non-Delta plans") {
+    withTempPath {
+      p =>
+        val path = p.getCanonicalPath
+        spark.range(100).selectExpr("id", "id * 2 as value").write.parquet(path)
+        val df = spark.read.parquet(path)
+        val plan = df.queryExecution.executedPlan
+
+        // Rules should return the plan unchanged (early-exit guard)
+        val transformed = DeltaPostTransformRules.rules.foldLeft(plan) {
+          (p, rule) => rule(p)
+        }
+        // No DeltaScanTransformer in the plan, so rules should be identity
+        assert(
+          !transformed.exists(_.isInstanceOf[DeltaScanTransformer]),
+          "Non-Delta plan should not contain DeltaScanTransformer")
+        assert(
+          !plan.exists(_.isInstanceOf[DeltaScanTransformer]),
+          "Original plan should not contain DeltaScanTransformer")
+    }
+  }
+
+  test("post-transform rules produce DeltaScanTransformer for Delta tables") {
+    withTempPath {
+      p =>
+        import testImplicits._
+        val path = p.getCanonicalPath
+        Seq(1, 2, 3, 4, 5).toDF("id").coalesce(1).write.format("delta").save(path)
+        val df = spark.read.format("delta").load(path)
+        val plan = df.queryExecution.executedPlan
+
+        // Delta scan should be offloaded to DeltaScanTransformer
+        val deltaScans = plan.collect { case s: DeltaScanTransformer => s }
+        assert(deltaScans.nonEmpty, "Delta plan should contain DeltaScanTransformer")
     }
   }
 }
