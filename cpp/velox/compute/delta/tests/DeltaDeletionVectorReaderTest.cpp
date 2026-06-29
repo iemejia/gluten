@@ -49,7 +49,7 @@ class DeltaDeletionVectorReaderTest : public ::testing::Test {
     pool_ = memory::memoryManager()->addLeafPool();
   }
 
-  std::string createSerializedPayload(const std::vector<int64_t>& deletedRows) {
+  std::string createSerializedPayload(const std::vector<uint64_t>& deletedRows) {
     RoaringBitmapArray bitmap;
     for (auto row : deletedRows) {
       bitmap.addSafe(row);
@@ -184,8 +184,8 @@ TEST_F(DeltaDeletionVectorReaderTest, CardinalityValidationMismatchThrows) {
 }
 
 TEST_F(DeltaDeletionVectorReaderTest, LargeCardinalityValidation) {
-  std::vector<int64_t> deletedRows;
-  for (int64_t i = 0; i < 10000; i += 10) {
+  std::vector<uint64_t> deletedRows;
+  for (uint64_t i = 0; i < 10000; i += 10) {
     deletedRows.push_back(i);
   }
 
@@ -195,8 +195,8 @@ TEST_F(DeltaDeletionVectorReaderTest, LargeCardinalityValidation) {
 }
 
 TEST_F(DeltaDeletionVectorReaderTest, BatchFilteringPartialOverlap) {
-  std::vector<int64_t> deletedRows;
-  for (int64_t i = 45; i <= 55; ++i) {
+  std::vector<uint64_t> deletedRows;
+  for (uint64_t i = 45; i <= 55; ++i) {
     deletedRows.push_back(i);
   }
 
@@ -222,8 +222,8 @@ TEST_F(DeltaDeletionVectorReaderTest, BatchFilteringPartialOverlap) {
 
 TEST_F(DeltaDeletionVectorReaderTest, ApplyDeletionFilterAllRowsDeleted) {
   // Every row in the batch is deleted.
-  std::vector<int64_t> deletedRows;
-  for (int64_t i = 0; i < 100; ++i) {
+  std::vector<uint64_t> deletedRows;
+  for (uint64_t i = 0; i < 100; ++i) {
     deletedRows.push_back(i);
   }
 
@@ -279,8 +279,7 @@ TEST_F(DeltaDeletionVectorReaderTest, ApplyDeletionFilterLargeOffset) {
   // Test with large row offsets (beyond 32-bit boundary) to exercise
   // multi-bucket Roaring64Map behavior.
   const uint64_t largeBase = static_cast<uint64_t>(3) << 32;
-  std::vector<int64_t> deletedRows = {
-      static_cast<int64_t>(largeBase + 10), static_cast<int64_t>(largeBase + 50), static_cast<int64_t>(largeBase + 99)};
+  std::vector<uint64_t> deletedRows = {largeBase + 10, largeBase + 50, largeBase + 99};
 
   DeltaDeletionVectorReader reader;
   reader.loadSerializedDeletionVector(createSerializedPayload(deletedRows));
@@ -326,17 +325,17 @@ TEST_F(DeltaDeletionVectorReaderTest, ApplyDeletionFilterSingleRowBatchNotDelete
 
 TEST_F(DeltaDeletionVectorReaderTest, ApplyDeletionFilterDenseSparseMixed) {
   // Dense cluster at start, sparse in middle, dense at end.
-  std::vector<int64_t> deletedRows;
+  std::vector<uint64_t> deletedRows;
   // Dense: rows 0-49
-  for (int64_t i = 0; i < 50; ++i) {
+  for (uint64_t i = 0; i < 50; ++i) {
     deletedRows.push_back(i);
   }
   // Sparse: every 100th row from 100-900
-  for (int64_t i = 100; i < 1000; i += 100) {
+  for (uint64_t i = 100; i < 1000; i += 100) {
     deletedRows.push_back(i);
   }
   // Dense: rows 950-999
-  for (int64_t i = 950; i < 1000; ++i) {
+  for (uint64_t i = 950; i < 1000; ++i) {
     deletedRows.push_back(i);
   }
 
