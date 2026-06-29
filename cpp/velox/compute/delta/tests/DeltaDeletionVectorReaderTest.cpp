@@ -280,9 +280,7 @@ TEST_F(DeltaDeletionVectorReaderTest, ApplyDeletionFilterLargeOffset) {
   // multi-bucket Roaring64Map behavior.
   const uint64_t largeBase = static_cast<uint64_t>(3) << 32;
   std::vector<int64_t> deletedRows = {
-      static_cast<int64_t>(largeBase + 10),
-      static_cast<int64_t>(largeBase + 50),
-      static_cast<int64_t>(largeBase + 99)};
+      static_cast<int64_t>(largeBase + 10), static_cast<int64_t>(largeBase + 50), static_cast<int64_t>(largeBase + 99)};
 
   DeltaDeletionVectorReader reader;
   reader.loadSerializedDeletionVector(createSerializedPayload(deletedRows));
@@ -351,9 +349,9 @@ TEST_F(DeltaDeletionVectorReaderTest, ApplyDeletionFilterDenseSparseMixed) {
 
   auto* rawBitmap = deleteBitmap->as<uint64_t>();
   // Should have rows 100 and 200 marked (every 100th from our sparse set)
-  EXPECT_TRUE(bits::isBitSet(rawBitmap, 0));   // row 100
+  EXPECT_TRUE(bits::isBitSet(rawBitmap, 0)); // row 100
   EXPECT_TRUE(bits::isBitSet(rawBitmap, 100)); // row 200
-  EXPECT_FALSE(bits::isBitSet(rawBitmap, 1));  // row 101
+  EXPECT_FALSE(bits::isBitSet(rawBitmap, 1)); // row 101
   EXPECT_FALSE(bits::isBitSet(rawBitmap, 99)); // row 199
 }
 
