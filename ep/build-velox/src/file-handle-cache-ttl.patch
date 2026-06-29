@@ -1,0 +1,14 @@
+diff --git i/velox/connectors/hive/HiveConnector.cpp w/velox/connectors/hive/HiveConnector.cpp
+index abc13acea..861f95c7f 100644
+--- i/velox/connectors/hive/HiveConnector.cpp
++++ w/velox/connectors/hive/HiveConnector.cpp
+@@ -40,7 +40,8 @@ HiveConnector::HiveConnector(
+       fileHandleFactory_(
+           hiveConfig_->isFileHandleCacheEnabled()
+               ? std::make_unique<SimpleLRUCache<FileHandleKey, FileHandle>>(
+-                    hiveConfig_->numCacheFileHandles())
++                    hiveConfig_->numCacheFileHandles(),
++                    hiveConfig_->fileHandleExpirationDurationMs())
+               : nullptr,
+           std::make_unique<FileHandleGenerator>(hiveConfig_->config())),
+       ioExecutor_(ioExecutor) {

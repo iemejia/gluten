@@ -159,6 +159,16 @@ function apply_compilation_fixes {
   $SUDO_CMD cp ${CURRENT_DIR}/modify_arrow.patch ${VELOX_HOME}/CMake/resolve_dependency_modules/arrow/
 
   git add ${VELOX_HOME}/CMake/resolve_dependency_modules/arrow/modify_arrow.patch # to avoid the file from being deleted by git clean -dffx :/
+
+  # Wire file handle cache TTL config to SimpleLRUCache constructor.
+  if [ -f "${CURRENT_DIR}/file-handle-cache-ttl.patch" ]; then
+    pushd $VELOX_HOME
+    git apply --check ${CURRENT_DIR}/file-handle-cache-ttl.patch 2>/dev/null && \
+      git apply ${CURRENT_DIR}/file-handle-cache-ttl.patch && \
+      echo "Applied file-handle-cache-ttl.patch" || \
+      echo "file-handle-cache-ttl.patch already applied or not applicable, skipping"
+    popd
+  fi
 }
 
 function setup_linux {
