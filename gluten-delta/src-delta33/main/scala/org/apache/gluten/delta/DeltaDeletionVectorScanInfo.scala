@@ -70,6 +70,9 @@ object DeltaDeletionVectorScanInfo {
    */
   def normalize(partitionColumnCount: Int, partitionFiles: Seq[PartitionedFile])
       : Option[(Seq[JMap[String, Object]], Seq[DeltaFileReadOptions])] = {
+    if (partitionFiles.isEmpty) {
+      return None
+    }
     val spark = activeSparkSession
     // Create a single Hadoop Configuration for the entire partition.
     val hadoopConf = spark.sessionState.newHadoopConf()

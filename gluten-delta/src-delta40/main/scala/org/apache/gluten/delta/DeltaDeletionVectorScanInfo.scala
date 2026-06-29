@@ -71,6 +71,9 @@ object DeltaDeletionVectorScanInfo {
    */
   def normalize(partitionColumnCount: Int, partitionFiles: Seq[PartitionedFile])
       : Option[(Seq[JMap[String, Object]], Seq[DeltaFileReadOptions])] = {
+    if (partitionFiles.isEmpty) {
+      return None
+    }
     val spark = activeSparkSession
     val hadoopConf = spark.sessionState.newHadoopConf()
     val cachedTablePath = resolveTablePath(hadoopConf, partitionColumnCount, partitionFiles.head)
@@ -169,31 +172,35 @@ object DeltaDeletionVectorScanInfo {
     }
   }
 
-  /** Cached reflective method for parsing DV descriptors (Delta 4.0 API compatibility). */
-  private lazy val descriptorParseMethod: java.lang.reflect.Method = {
+  /** Cached reflective methods for parsing DV descriptors (Delta 4.0 API compatibility). */
+  private lazy val descriptorParseMethods: Seq[java.lang.reflect.Method] = {
     val methods = Seq("deserializeFromBase64", "fromJson")
-    methods.iterator
-      .flatMap {
-        methodName =>
-          Try(DeletionVectorDescriptor.getClass.getMethod(methodName, classOf[String])).toOption
-      }
-      .nextOption()
-      .getOrElse {
-        throw new IllegalStateException(
-          "Unable to find DeletionVectorDescriptor parse method (tried: " +
-            methods.mkString(", ") + ")")
-      }
+    val found = methods.flatMap {
+      methodName =>
+        Try(DeletionVectorDescriptor.getClass.getMethod(methodName, classOf[String])).toOption
+    }
+    if (found.isEmpty) {
+      throw new IllegalStateException(
+        "Unable to find DeletionVectorDescriptor parse method (tried: " +
+          methods.mkString(", ") + ")")
+    }
+    found
   }
 
   private def parseDescriptor(encodedDescriptor: String): DeletionVectorDescriptor = {
-    try {
-      descriptorParseMethod
-        .invoke(DeletionVectorDescriptor, encodedDescriptor)
-        .asInstanceOf[DeletionVectorDescriptor]
-    } catch {
-      case NonFatal(e) =>
-        throw new IllegalArgumentException("Unable to parse Delta deletion vector descriptor", e)
+    var lastException: Throwable = null
+    for (method <- descriptorParseMethods) {
+      try {
+        return method
+          .invoke(DeletionVectorDescriptor, encodedDescriptor)
+          .asInstanceOf[DeletionVectorDescriptor]
+      } catch {
+        case NonFatal(e) => lastException = e
+      }
     }
+    throw new IllegalArgumentException(
+      "Unable to parse Delta deletion vector descriptor",
+      lastException)
   }
 
   private def parseRowIndexFilterType(filterType: String): RowIndexFilterType = {

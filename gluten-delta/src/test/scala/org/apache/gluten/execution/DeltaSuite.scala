@@ -805,21 +805,15 @@ abstract class DeltaSuite extends WholeStageTransformerSuite {
         val df = spark.read.parquet(path)
         val plan = df.queryExecution.executedPlan
 
-        // Rules should return the plan unchanged (early-exit guard)
-        val transformed = DeltaPostTransformRules.rules.foldLeft(plan) {
-          (p, rule) => rule(p)
-        }
-        // No DeltaScanTransformer in the plan, so rules should be identity
-        assert(
-          !transformed.exists(_.isInstanceOf[DeltaScanTransformer]),
-          "Non-Delta plan should not contain DeltaScanTransformer")
-        assert(
-          !plan.exists(_.isInstanceOf[DeltaScanTransformer]),
-          "Original plan should not contain DeltaScanTransformer")
+        // Apply only the Delta-specific rules (skip RemoveTransitions which is generic)
+        val deltaRules = DeltaPostTransformRules.rules.tail
+        val transformed = deltaRules.foldLeft(plan)((p, rule) => rule(p))
+        // No DeltaScanTransformer in the plan, so rules should return the same object (early-exit)
+        assert(transformed eq plan, "Delta rules should return the exact same plan instance")
     }
   }
 
-  test("post-transform rules produce DeltaScanTransformer for Delta tables") {
+  test("Delta scan is offloaded to DeltaScanTransformer") {
     withTempPath {
       p =>
         import testImplicits._
@@ -848,15 +842,14 @@ abstract class DeltaSuite extends WholeStageTransformerSuite {
         val plan = df.queryExecution.executedPlan
         val scans = plan.collect { case s: DeltaScanTransformer => s }
 
-        if (scans.nonEmpty) {
-          val scan = scans.head
-          // scanFilters is now a lazy val; repeated calls should return the same instance
-          val first = scan.scanFilters
-          val second = scan.scanFilters
-          val third = scan.scanFilters
-          assert(first eq second, "scanFilters should return the same cached instance")
-          assert(second eq third, "scanFilters should return the same cached instance")
-        }
+        assert(scans.nonEmpty, "Delta plan should contain DeltaScanTransformer")
+        val scan = scans.head
+        // scanFilters is now a lazy val; repeated calls should return the same instance
+        val first = scan.scanFilters
+        val second = scan.scanFilters
+        val third = scan.scanFilters
+        assert(first eq second, "scanFilters should return the same cached instance")
+        assert(second eq third, "scanFilters should return the same cached instance")
     }
   }
 }

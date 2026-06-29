@@ -41,7 +41,7 @@ import org.apache.hadoop.fs.Path
  * To run:
  * {{{
  *   bin/spark-submit --class org.apache.spark.sql.execution.benchmark.DeltaPlanningBenchmark \
- *     --jars <spark-core-test-jar> <gluten-backends-velox-jar>
+ *     --jars <spark-core-test-jar>,<gluten-backends-velox-jar>
  * }}}
  *
  * Or via Maven (from the backends-velox module):
@@ -174,14 +174,6 @@ object DeltaPlanningBenchmark extends SqlBasedBenchmark {
     }
   }
 
-  /**
-   * Benchmarks the delta40 `parseDescriptor` optimization: cached reflective method lookup vs
-   * uncached (resolving `getMethod` on every call). Simulates the pattern used in
-   * `DeltaDeletionVectorScanInfo` for Delta 4.0 API compatibility.
-   *
-   * The cached version resolves the Method object once (lazy val); the uncached version calls
-   * `getMethod` + `invoke` per descriptor, which is what the old code did per-file.
-   */
   /**
    * Creates a Delta table with deletion vectors and provides the partitioned files for direct DV
    * materialization benchmarking.

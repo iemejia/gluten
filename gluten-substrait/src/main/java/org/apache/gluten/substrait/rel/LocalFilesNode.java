@@ -97,8 +97,8 @@ public class LocalFilesNode implements SplitInfo {
    * Copies an existing node, replacing its per-file extra metadata. Lets data-lake subclasses
    * decorate a generically built node without re-deriving the file listing.
    *
-   * <p>Note: uses direct list reference transfer (not deep copy) for efficiency, since the original
-   * node is typically discarded immediately after this constructor returns.
+   * <p>Note: performs a shallow list copy (element references are shared, not deep-copied). This is
+   * safe because callers supply freshly built maps and the original node is discarded immediately.
    */
   protected LocalFilesNode(LocalFilesNode other, List<Map<String, Object>> otherMetadataColumns) {
     this.index = other.index;
