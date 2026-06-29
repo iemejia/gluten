@@ -311,6 +311,8 @@ void BM_ApplyDeletionFilter(benchmark::State& state, double deletionPercent) {
 
   // Simulate scanning through the file in batches.
   const uint64_t numBatches = totalFileRows / batchSize;
+  // Only count rows actually processed (drop tail < batchSize).
+  const uint64_t rowsProcessed = numBatches * batchSize;
   uint64_t totalDeletedFound = 0;
 
   for (auto _ : state) {
@@ -318,6 +320,8 @@ void BM_ApplyDeletionFilter(benchmark::State& state, double deletionPercent) {
     for (uint64_t batch = 0; batch < numBatches; ++batch) {
       reader.applyDeletionFilter(batch * batchSize, batchSize, deleteBitmap);
       // Count bits set to prevent dead-code elimination.
+      // Padding bits in the last word are safe: applyDeletionFilter memsets
+      // the entire bitmap to zero before setting only in-range bits.
       auto* raw = deleteBitmap->as<uint64_t>();
       for (uint64_t w = 0; w < bits::nwords(batchSize); ++w) {
         totalDeletedFound += __builtin_popcountll(raw[w]);
@@ -326,7 +330,7 @@ void BM_ApplyDeletionFilter(benchmark::State& state, double deletionPercent) {
     benchmark::DoNotOptimize(totalDeletedFound);
   }
 
-  state.SetItemsProcessed(state.iterations() * totalFileRows);
+  state.SetItemsProcessed(state.iterations() * rowsProcessed);
   state.counters["batch_size"] = benchmark::Counter(batchSize);
   state.counters["deletion_pct"] = benchmark::Counter(deletionPercent);
   state.counters["deleted_found"] = benchmark::Counter(totalDeletedFound);
