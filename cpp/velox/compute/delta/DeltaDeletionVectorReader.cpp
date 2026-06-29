@@ -183,15 +183,29 @@ void DeltaDeletionVectorReader::applyDeletionFilter(uint64_t baseReadOffset, uin
   auto* rawBitmap = deleteBitmap->asMutable<uint64_t>();
   std::memset(rawBitmap, 0, bits::nbytes(size));
 
+  // Use an iterator-based approach instead of per-row contains() lookups.
+  // This is O(deletions_in_range) rather than O(batch_size), which is
+  // significantly faster when deletions are sparse relative to batch size.
+  const uint64_t rangeEnd = baseReadOffset + size;
+  auto it = deletionBitmap_->begin();
+  if (!it.move_equalorlarger(baseReadOffset)) {
+    // No deleted rows at or after baseReadOffset — nothing to mark.
+    deleteBitmap->setSize(0);
+    return;
+  }
+
   bool hasDeletedRows = false;
   uint64_t highestDeletedIndex = 0;
-  for (uint64_t i = 0; i < size; ++i) {
-    const uint64_t absoluteRowPos = baseReadOffset + i;
-    if (deletionBitmap_->contains(absoluteRowPos)) {
-      bits::setBit(rawBitmap, i);
-      hasDeletedRows = true;
-      highestDeletedIndex = i;
+  while (it != deletionBitmap_->end()) {
+    const uint64_t absoluteRowPos = *it;
+    if (absoluteRowPos >= rangeEnd) {
+      break;
     }
+    const uint64_t relativeIndex = absoluteRowPos - baseReadOffset;
+    bits::setBit(rawBitmap, relativeIndex);
+    hasDeletedRows = true;
+    highestDeletedIndex = relativeIndex;
+    ++it;
   }
 
   deleteBitmap->setSize(hasDeletedRows ? bits::nbytes(highestDeletedIndex + 1) : 0);
