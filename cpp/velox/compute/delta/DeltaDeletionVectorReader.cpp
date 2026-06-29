@@ -186,7 +186,8 @@ void DeltaDeletionVectorReader::applyDeletionFilter(uint64_t baseReadOffset, uin
   // Use an iterator-based approach instead of per-row contains() lookups.
   // This is O(deletions_in_range) rather than O(batch_size), which is
   // significantly faster when deletions are sparse relative to batch size.
-  const uint64_t rangeEnd = baseReadOffset + size;
+  // Guard against uint64_t overflow when baseReadOffset is near UINT64_MAX.
+  const uint64_t rangeEnd = (size <= UINT64_MAX - baseReadOffset) ? baseReadOffset + size : UINT64_MAX;
   auto it = deletionBitmap_->begin();
   if (!it.move_equalorlarger(baseReadOffset)) {
     // No deleted rows at or after baseReadOffset — nothing to mark.

@@ -302,7 +302,6 @@ void BM_ApplyDeletionFilter(benchmark::State& state, double deletionPercent) {
   reader.loadSerializedDeletionVector(std::string_view(payload.data(), payload.size()));
 
   // Allocate the output bitmap buffer.
-  memory::MemoryManager::testingSetInstance(memory::MemoryManager::Options{});
   auto pool = memory::memoryManager()->addLeafPool();
   auto deleteBitmap = AlignedBuffer::allocate<uint64_t>(bits::nwords(batchSize), pool.get());
 
@@ -345,4 +344,10 @@ BENCHMARK_CAPTURE(BM_ApplyDeletionFilter, VeryDense_90pct, 90.0)->Arg(4096)->Uni
 // Sparse with large batch (typical Velox max batch).
 BENCHMARK_CAPTURE(BM_ApplyDeletionFilter, Sparse_1pct_LargeBatch, 1.0)->Arg(10000)->Unit(benchmark::kMillisecond);
 
-BENCHMARK_MAIN();
+int main(int argc, char** argv) {
+  memory::MemoryManager::testingSetInstance(memory::MemoryManager::Options{});
+  benchmark::Initialize(&argc, argv);
+  benchmark::RunSpecifiedBenchmarks();
+  benchmark::Shutdown();
+  return 0;
+}
