@@ -34,7 +34,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
   override protected def sparkConf: SparkConf = {
     super.sparkConf
       .set(VeloxConfig.COLUMNAR_VELOX_FILE_HANDLE_CACHE_ENABLED.key, "true")
-      .set(VeloxConfig.COLUMNAR_VELOX_FILE_HANDLE_EXPIRATION_DURATION_MS.key, "600000")
+      .set(VeloxConfig.COLUMNAR_VELOX_FILE_HANDLE_EXPIRATION_DURATION_MS.key, "2000")
       .set(VeloxConfig.COLUMNAR_VELOX_NUM_CACHE_FILE_HANDLES.key, "10000")
   }
 
@@ -211,6 +211,39 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
           // Acceptable: the scan failed because the deleted file is no longer accessible.
           // The important thing is that it does not silently return wrong data.
         }
+    }
+  }
+
+  testWithSpecifiedSparkVersion(
+    "TTL-based eviction: scans succeed after cached handles expire",
+    "3.5",
+    "3.5") {
+    // Verify that after the TTL expires (2s, set in sparkConf), cached handles
+    // are evicted and subsequent scans re-open files correctly.
+    withTempPath {
+      dir =>
+        spark
+          .range(5000)
+          .selectExpr("id", "id * 2 as doubled")
+          .repartition(20)
+          .write
+          .parquet(dir.getCanonicalPath)
+
+        val path = dir.getCanonicalPath
+
+        // First scan populates the cache
+        val count1 = spark.read.parquet(path).count()
+        assert(count1 == 5000)
+        val sum1 = spark.read.parquet(path).selectExpr("sum(id)").collect()(0).getLong(0)
+
+        // Wait for TTL to expire (configured to 2s in sparkConf)
+        Thread.sleep(3000)
+
+        // Scan after expiration: handles should be evicted and re-opened
+        val count2 = spark.read.parquet(path).count()
+        assert(count2 == 5000, s"Count mismatch after TTL expiration: expected 5000, got $count2")
+        val sum2 = spark.read.parquet(path).selectExpr("sum(id)").collect()(0).getLong(0)
+        assert(sum2 == sum1, s"Sum mismatch after TTL expiration: expected $sum1, got $sum2")
     }
   }
 
