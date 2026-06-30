@@ -544,9 +544,12 @@ object VeloxConfig extends ConfigRegistry {
     buildStaticConf("spark.gluten.sql.columnar.backend.velox.numCacheFileHandles")
       .doc(
         "Maximum number of entries in the file handle cache. Each entry holds an open " +
-          "file descriptor (local FS) or connection state (remote FS).")
+          "file descriptor (local FS) or connection state (remote FS). Note that on " +
+          "local filesystems, high values may approach the OS file descriptor limit " +
+          "(ulimit -n). On remote object stores (S3, ABFS, GCS) entries are HTTP " +
+          "connections, not OS file descriptors.")
       .intConf
-      .createWithDefault(20000)
+      .createWithDefault(10000)
 
   val COLUMNAR_VELOX_FILE_HANDLE_EXPIRATION_DURATION_MS =
     buildStaticConf("spark.gluten.sql.columnar.backend.velox.fileHandleExpirationDurationMs")

@@ -165,7 +165,7 @@ const std::string kVeloxFileHandleCacheEnabled = "spark.gluten.sql.columnar.back
 const bool kVeloxFileHandleCacheEnabledDefault = true;
 
 const std::string kVeloxNumCacheFileHandles = "spark.gluten.sql.columnar.backend.velox.numCacheFileHandles";
-const int32_t kVeloxNumCacheFileHandlesDefault = 20000;
+const int32_t kVeloxNumCacheFileHandlesDefault = 10000;
 
 const std::string kVeloxFileHandleExpirationDurationMs =
     "spark.gluten.sql.columnar.backend.velox.fileHandleExpirationDurationMs";

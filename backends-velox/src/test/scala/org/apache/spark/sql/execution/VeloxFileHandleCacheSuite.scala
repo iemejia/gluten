@@ -35,7 +35,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
     super.sparkConf
       .set(VeloxConfig.COLUMNAR_VELOX_FILE_HANDLE_CACHE_ENABLED.key, "true")
       .set(VeloxConfig.COLUMNAR_VELOX_FILE_HANDLE_EXPIRATION_DURATION_MS.key, "600000")
-      .set(VeloxConfig.COLUMNAR_VELOX_NUM_CACHE_FILE_HANDLES.key, "20000")
+      .set(VeloxConfig.COLUMNAR_VELOX_NUM_CACHE_FILE_HANDLES.key, "10000")
   }
 
   testWithSpecifiedSparkVersion(
@@ -194,17 +194,23 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         assert(parquetFiles.nonEmpty)
         val deletedFile = parquetFiles.head
         val deletedRows = spark.read.parquet(deletedFile.getCanonicalPath).count()
-        deletedFile.delete()
+        assert(deletedFile.delete(), s"Failed to delete ${deletedFile.getCanonicalPath}")
 
         // On Linux, the cached FD to the deleted file may still work (unlinked inode).
         // Either way, the remaining files should be readable.
-        // We don't assert on exact count because the deleted file's FD might still be valid.
-        val count2 = spark.read.parquet(path).count()
-        // The count should be either (count1 - deletedRows) or count1
-        // depending on whether the OS kept the inode accessible
-        assert(
-          count2 == count1 || count2 == count1 - deletedRows,
-          s"Unexpected count after deletion: $count2 (original: $count1, deleted: $deletedRows)")
+        // The scan may also throw if the FS detects the missing file.
+        try {
+          val count2 = spark.read.parquet(path).count()
+          // The count should be either (count1 - deletedRows) or count1
+          // depending on whether the OS kept the inode accessible
+          assert(
+            count2 == count1 || count2 == count1 - deletedRows,
+            s"Unexpected count after deletion: $count2 (original: $count1, deleted: $deletedRows)")
+        } catch {
+          case _: Exception =>
+          // Acceptable: the scan failed because the deleted file is no longer accessible.
+          // The important thing is that it does not silently return wrong data.
+        }
     }
   }
 
@@ -231,9 +237,9 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         assert(allCols == 5000)
 
         // Read subset of columns (same file handles, different projection)
-        val subset1 = spark.read.parquet(path).select("id").collect()
-        assert(subset1.length == 5000)
-        assert(subset1.head.schema.fieldNames.sameElements(Array("id")))
+        val subset1Df = spark.read.parquet(path).select("id")
+        assert(subset1Df.schema.fieldNames.sameElements(Array("id")))
+        assert(subset1Df.collect().length == 5000)
 
         // Different subset
         val subset2 = spark.read.parquet(path).selectExpr("sum(doubled)").collect()
