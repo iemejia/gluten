@@ -207,7 +207,12 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
             count2 == count1 || count2 == count1 - deletedRows,
             s"Unexpected count after deletion: $count2 (original: $count1, deleted: $deletedRows)")
         } catch {
-          case _: Exception =>
+          case e: Exception
+              if e.getMessage != null &&
+                (e.getMessage.contains("FileNotFoundException") ||
+                  e.getMessage.contains("No such file") ||
+                  e.getMessage.contains("Path does not exist") ||
+                  e.getMessage.contains("does not exist")) =>
           // Acceptable: the scan failed because the deleted file is no longer accessible.
           // The important thing is that it does not silently return wrong data.
         }
@@ -272,7 +277,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         // Read subset of columns (same file handles, different projection)
         val subset1Df = spark.read.parquet(path).select("id")
         assert(subset1Df.schema.fieldNames.sameElements(Array("id")))
-        assert(subset1Df.collect().length == 5000)
+        assert(subset1Df.count() == 5000)
 
         // Different subset
         val subset2 = spark.read.parquet(path).selectExpr("sum(doubled)").collect()
