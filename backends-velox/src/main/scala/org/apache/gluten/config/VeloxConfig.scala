@@ -549,6 +549,7 @@ object VeloxConfig extends ConfigRegistry {
           "(ulimit -n). On remote object stores (S3, ABFS, GCS) entries are HTTP " +
           "connections, not OS file descriptors.")
       .intConf
+      .checkValue(_ > 0, "must be a positive number")
       .createWithDefault(10000)
 
   val COLUMNAR_VELOX_FILE_HANDLE_EXPIRATION_DURATION_MS =
@@ -559,6 +560,7 @@ object VeloxConfig extends ConfigRegistry {
           "from accumulating (e.g., expired HDFS leases, closed remote connections). " +
           "A value of 0 disables TTL-based eviction.")
       .longConf
+      .checkValue(_ >= 0, "must be a non-negative number (0 disables TTL-based eviction)")
       .createWithDefault(600000L) // 10 minutes
 
   val DIRECTORY_SIZE_GUESS =
