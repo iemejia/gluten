@@ -122,7 +122,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
           .parquet(dir.getCanonicalPath)
 
         val fileCount = dir.listFiles().count(_.getName.endsWith(".parquet"))
-        assert(fileCount >= 100, s"Expected at least 100 files, got $fileCount")
+        assert(fileCount >= 200, s"Expected at least 200 files, got $fileCount")
 
         // Scan all files - should work without resource errors
         val count = spark.read.parquet(dir.getCanonicalPath).count()
