@@ -162,17 +162,18 @@ function apply_compilation_fixes {
 
   # Wire file handle cache TTL config to SimpleLRUCache constructor.
   if [ -f "${CURRENT_DIR}/file-handle-cache-ttl.patch" ]; then
-    pushd $VELOX_HOME
-    if git apply --check ${CURRENT_DIR}/file-handle-cache-ttl.patch 2>/dev/null; then
-      git apply ${CURRENT_DIR}/file-handle-cache-ttl.patch
+    pushd "${VELOX_HOME}" > /dev/null
+    if git apply --check "${CURRENT_DIR}/file-handle-cache-ttl.patch" 2>/dev/null; then
+      git apply "${CURRENT_DIR}/file-handle-cache-ttl.patch"
       echo "Applied file-handle-cache-ttl.patch"
-    elif git apply --check -R ${CURRENT_DIR}/file-handle-cache-ttl.patch 2>/dev/null; then
+    elif git apply --check -R "${CURRENT_DIR}/file-handle-cache-ttl.patch" 2>/dev/null; then
       echo "file-handle-cache-ttl.patch already applied upstream, skipping"
     else
+      popd > /dev/null
       echo "ERROR: file-handle-cache-ttl.patch failed to apply and is not present upstream" >&2
       exit 1
     fi
-    popd
+    popd > /dev/null
   fi
 }
 

@@ -236,8 +236,9 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
     "TTL-based eviction: scans succeed after cached handles expire",
     "3.5",
     "3.5") {
-    // Verify that after the TTL expires (2s, set in sparkConf), cached handles
-    // are evicted and subsequent scans re-open files correctly.
+    // Verify that scans still produce correct results after the configured TTL
+    // (2s, set in sparkConf) has elapsed. This exercises the path where cached
+    // handles may have been evicted and must be re-opened transparently.
     withTempPath {
       dir =>
         spark
@@ -261,7 +262,8 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         // Wait for TTL to expire (configured to 2s in sparkConf)
         Thread.sleep(3000)
 
-        // Scan after expiration: handles should be evicted and re-opened
+        // Scan after TTL expiration: verify results remain correct
+        // (handles may have been evicted and transparently re-opened)
         val count2 = spark.read.parquet(path).count()
         assert(count2 == 5000, s"Count mismatch after TTL expiration: expected 5000, got $count2")
         val sum2 = spark.read.parquet(path).selectExpr("sum(id)").collect()(0).getLong(0)
