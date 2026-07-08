@@ -86,6 +86,9 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         val expected = spark.read.parquet(path).count()
         assert(expected == 5000)
 
+        // Verify scans go through Gluten/Velox
+        checkGlutenPlan[BasicScanExecTransformer](spark.read.parquet(path))
+
         // Scan the same files multiple times - each should hit the cache
         for (i <- 1 to 5) {
           val count = spark.read.parquet(path).count()
@@ -124,6 +127,9 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         val fileCount = dir.listFiles().count(_.getName.endsWith(".parquet"))
         assert(fileCount >= 200, s"Expected at least 200 files, got $fileCount")
 
+        // Verify scans go through Gluten/Velox
+        checkGlutenPlan[BasicScanExecTransformer](spark.read.parquet(dir.getCanonicalPath))
+
         // Scan all files - should work without resource errors
         val count = spark.read.parquet(dir.getCanonicalPath).count()
         assert(count == 20000)
@@ -153,6 +159,10 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
           .parquet(dir.getCanonicalPath)
 
         val path = dir.getCanonicalPath
+
+        // Verify scans go through Gluten/Velox
+        checkGlutenPlan[BasicScanExecTransformer](
+          spark.read.parquet(path).where("partition_key = 5"))
 
         // Filter that matches ~10% of rows
         val filtered = spark.read.parquet(path).where("partition_key = 5").count()
@@ -188,6 +198,9 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         // First scan populates the cache
         val count1 = spark.read.parquet(path).count()
         assert(count1 == 1000)
+
+        // Verify scans go through Gluten/Velox
+        checkGlutenPlan[BasicScanExecTransformer](spark.read.parquet(path))
 
         // Delete one parquet file
         val parquetFiles = dir.listFiles().filter(_.getName.endsWith(".parquet"))
@@ -239,6 +252,10 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         // First scan populates the cache
         val count1 = spark.read.parquet(path).count()
         assert(count1 == 5000)
+
+        // Verify scans go through Gluten/Velox
+        checkGlutenPlan[BasicScanExecTransformer](spark.read.parquet(path))
+
         val sum1 = spark.read.parquet(path).selectExpr("sum(id)").collect()(0).getLong(0)
 
         // Wait for TTL to expire (configured to 2s in sparkConf)
@@ -269,6 +286,9 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
           .parquet(dir.getCanonicalPath)
 
         val path = dir.getCanonicalPath
+
+        // Verify scans go through Gluten/Velox
+        checkGlutenPlan[BasicScanExecTransformer](spark.read.parquet(path))
 
         // Read all columns
         val allCols = spark.read.parquet(path).select("id", "doubled", "tripled", "text").count()
