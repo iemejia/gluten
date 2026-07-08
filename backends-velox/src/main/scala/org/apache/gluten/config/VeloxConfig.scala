@@ -546,8 +546,9 @@ object VeloxConfig extends ConfigRegistry {
         "Maximum number of entries in the file handle cache. Each entry holds an open " +
           "file descriptor (local FS) or connection state (remote FS). Note that on " +
           "local filesystems, high values may approach the OS file descriptor limit " +
-          "(ulimit -n). On remote object stores (S3, ABFS, GCS) entries are HTTP " +
-          "connections, not OS file descriptors.")
+          "(ulimit -n). On remote object stores (S3, ABFS, GCS) entries represent " +
+          "network connections/sockets rather than per-file OS file descriptors, but " +
+          "they can still count toward OS resource limits (ulimit -n).")
       .intConf
       .checkValue(_ > 0, "must be a positive number")
       .createWithDefault(10000)
