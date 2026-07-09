@@ -560,7 +560,7 @@ object VeloxConfig extends ConfigRegistry {
           "within this duration are evicted from the cache. This prevents stale handles " +
           "from accumulating (e.g., expired HDFS leases, closed remote connections). " +
           "A value of 0 disables TTL-based eviction.")
-      .longConf
+      .timeConf(TimeUnit.MILLISECONDS)
       .checkValue(_ >= 0, "must be a non-negative number (0 disables TTL-based eviction)")
       .createWithDefault(600000L) // 10 minutes
 
