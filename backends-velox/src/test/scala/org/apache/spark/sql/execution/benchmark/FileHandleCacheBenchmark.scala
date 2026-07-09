@@ -35,12 +35,14 @@ import org.apache.spark.benchmark.Benchmark
  *   # With file handle cache enabled (default):
  *   bin/spark-submit --class <this class> \
  *     --conf spark.gluten.sql.columnar.backend.velox.fileHandleCacheEnabled=true \
- *     --jars <spark core test jar> <sql core test jar>
+ *     --jars <spark core test jar>,<sql core test jar> \
+ *     <application jar>
  *
  *   # With file handle cache disabled:
  *   bin/spark-submit --class <this class> \
  *     --conf spark.gluten.sql.columnar.backend.velox.fileHandleCacheEnabled=false \
- *     --jars <spark core test jar> <sql core test jar>
+ *     --jars <spark core test jar>,<sql core test jar> \
+ *     <application jar>
  * }}}
  *
  * Expected result: with caching enabled, repeated scans should show lower wall-clock time due to
