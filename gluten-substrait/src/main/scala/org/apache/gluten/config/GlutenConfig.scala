@@ -654,6 +654,8 @@ object GlutenConfig extends ConfigRegistry {
       ("spark.sql.orc.compression.codec", "snappy"),
       ("spark.sql.decimalOperations.allowPrecisionLoss", "true"),
       ("spark.gluten.sql.columnar.backend.velox.fileHandleCacheEnabled", "true"),
+      ("spark.gluten.sql.columnar.backend.velox.numCacheFileHandles", "10000"),
+      ("spark.gluten.sql.columnar.backend.velox.fileHandleExpirationDurationMs", "600000"),
       ("spark.gluten.velox.awsSdkLogLevel", "FATAL"),
       ("spark.gluten.velox.s3UseProxyFromEnv", "false"),
       ("spark.gluten.velox.s3PayloadSigningPolicy", "Never"),
