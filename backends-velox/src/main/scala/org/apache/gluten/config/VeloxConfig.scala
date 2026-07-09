@@ -182,6 +182,7 @@ object VeloxConfig extends ConfigRegistry {
     buildStaticConf("spark.gluten.sql.columnar.backend.velox.ssdCacheIOThreads")
       .doc("The number of IO threads for SSD cache read/write operations")
       .intConf
+      .checkValue(_ > 0, "must be a positive number")
       .createWithDefault(4)
 
   val COLUMNAR_VELOX_SSD_ODIRECT_ENABLED =
