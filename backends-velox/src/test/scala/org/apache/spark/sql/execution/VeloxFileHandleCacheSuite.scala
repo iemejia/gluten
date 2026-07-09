@@ -71,8 +71,8 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
     "repeated scans produce consistent results (cache hit path)",
     "3.5",
     "3.5") {
-    // When file handles are cached, repeated scans of the same files must produce
-    // identical results. This exercises the cache hit path.
+    // Repeated scans of the same files must produce identical results regardless
+    // of whether handles are served from cache or re-opened after TTL eviction.
     withTempPath {
       dir =>
         spark
@@ -89,7 +89,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         // Verify scans go through Gluten/Velox
         checkGlutenPlan[BasicScanExecTransformer](spark.read.parquet(path))
 
-        // Scan the same files multiple times - each should hit the cache
+        // Scan the same files multiple times - results must be consistent
         for (i <- 1 to 5) {
           val count = spark.read.parquet(path).count()
           assert(
