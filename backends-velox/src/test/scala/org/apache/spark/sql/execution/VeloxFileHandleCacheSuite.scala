@@ -31,10 +31,14 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
   override protected val resourcePath: String = "/parquet-for-read"
   override protected val fileFormat: String = "parquet"
 
+  // TTL for file handle cache eviction (used in sparkConf and sleep calculations)
+  private val ttlMs = 2000
+  private val ttlWaitMs = ttlMs + 1000 // TTL + buffer for eviction to take effect
+
   override protected def sparkConf: SparkConf = {
     super.sparkConf
       .set(VeloxConfig.COLUMNAR_VELOX_FILE_HANDLE_CACHE_ENABLED.key, "true")
-      .set(VeloxConfig.COLUMNAR_VELOX_FILE_HANDLE_EXPIRATION_DURATION_MS.key, "2000")
+      .set(VeloxConfig.COLUMNAR_VELOX_FILE_HANDLE_EXPIRATION_DURATION_MS.key, ttlMs.toString)
       .set(VeloxConfig.COLUMNAR_VELOX_NUM_CACHE_FILE_HANDLES.key, "10000")
   }
 
@@ -134,7 +138,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         val count = spark.read.parquet(dir.getCanonicalPath).count()
         assert(count == 20000)
 
-        // Scan again (cache hit path) - should also work
+        // Scan again - results must remain consistent
         val count2 = spark.read.parquet(dir.getCanonicalPath).count()
         assert(count2 == 20000)
     }
@@ -172,7 +176,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         val rangeFiltered = spark.read.parquet(path).where("id >= 50000").count()
         assert(rangeFiltered == 50000, s"Expected 50000 range-filtered rows, got $rangeFiltered")
 
-        // Re-run same filters (cache hit path)
+        // Re-run same filters - results must remain consistent
         val filtered2 = spark.read.parquet(path).where("partition_key = 5").count()
         assert(filtered2 == filtered, "Filtered count mismatch on repeated scan")
     }
@@ -259,8 +263,8 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
 
         val sum1 = spark.read.parquet(path).selectExpr("sum(id)").collect()(0).getLong(0)
 
-        // Wait for TTL to expire (configured to 2s in sparkConf)
-        Thread.sleep(3000)
+        // Wait for TTL to expire
+        Thread.sleep(ttlWaitMs)
 
         // Scan after TTL expiration: verify results remain correct
         // (handles may have been evicted and transparently re-opened)
