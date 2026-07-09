@@ -68,7 +68,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
   }
 
   testWithSpecifiedSparkVersion(
-    "repeated scans produce consistent results (cache hit path)",
+    "repeated scans produce consistent results",
     "3.5",
     "3.5") {
     // Repeated scans of the same files must produce identical results regardless
