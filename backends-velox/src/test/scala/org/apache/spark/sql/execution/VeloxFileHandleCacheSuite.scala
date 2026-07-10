@@ -240,9 +240,14 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
     "TTL-based eviction: scans succeed after cached handles expire",
     "3.5",
     "3.5") {
-    // Verify that scans still produce correct results after the configured TTL
-    // (2s, set in sparkConf) has elapsed. This exercises the path where cached
-    // handles may have been evicted and must be re-opened transparently.
+    // Correctness guard: verify that scans produce correct results after the
+    // configured TTL (2s, set in sparkConf) has elapsed and cached handles may
+    // have been evicted. This does NOT directly assert that eviction occurred
+    // (Velox exposes no JVM-visible eviction counter), but it exercises the
+    // re-open path: if a handle was evicted, the scan must transparently
+    // re-open the file and return the same data. Combined with the "scan after
+    // file deletion" test -- which proves cached handles keep the inode alive --
+    // this gives reasonable coverage that the TTL wiring works end-to-end.
     withTempPath {
       dir =>
         spark
