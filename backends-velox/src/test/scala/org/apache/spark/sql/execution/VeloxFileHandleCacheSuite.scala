@@ -243,8 +243,9 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
           // Direct file-not-found exception.
           case e: NoSuchFileException =>
           // NIO equivalent of FileNotFoundException.
-          case e: Exception if hasCauseOfType(e, classOf[FileNotFoundException]) ||
-              hasCauseOfType(e, classOf[NoSuchFileException]) =>
+          case e: Exception
+              if hasCauseOfType(e, classOf[FileNotFoundException]) ||
+                hasCauseOfType(e, classOf[NoSuchFileException]) =>
           // Wrapped file-not-found in the cause chain (e.g., SparkException wrapping).
           case e: Exception
               if e.getMessage != null &&
