@@ -21,6 +21,9 @@ import org.apache.gluten.execution.{BasicScanExecTransformer, VeloxWholeStageTra
 
 import org.apache.spark.SparkConf
 
+import java.io.FileNotFoundException
+import java.nio.file.NoSuchFileException
+
 /**
  * Test suite for Velox file handle cache behavior.
  *
@@ -34,6 +37,16 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
   // TTL for file handle cache eviction (used in sparkConf and sleep calculations)
   private val ttlMs = 2000
   private val ttlWaitMs = ttlMs + 1000 // TTL + buffer for eviction to take effect
+
+  /** Walks the exception cause chain looking for an instance of the given type. */
+  private def hasCauseOfType(e: Throwable, cls: Class[_ <: Throwable]): Boolean = {
+    var cause = e.getCause
+    while (cause != null) {
+      if (cls.isInstance(cause)) return true
+      cause = cause.getCause
+    }
+    false
+  }
 
   override protected def sparkConf: SparkConf = {
     super.sparkConf
@@ -183,12 +196,14 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
   }
 
   testWithSpecifiedSparkVersion(
-    "scan after file deletion produces appropriate error or empty result",
+    "scan after file deletion does not silently return wrong data",
     "3.5",
     "3.5") {
     // If a file is deleted between scans, the next scan should either:
-    // - Succeed (if the cached FD still works on Linux with unlinked inodes)
-    // - Produce an error (not silently return wrong data)
+    // - Succeed with the original count (cached FD keeps inode alive on Linux)
+    // - Succeed with a reduced count (deleted file not accessible)
+    // - Throw a file-not-found error
+    // The key invariant: it must NOT silently return incorrect data.
     withTempPath {
       dir =>
         spark
@@ -224,14 +239,21 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
             count2 == count1 || count2 == count1 - deletedRows,
             s"Unexpected count after deletion: $count2 (original: $count1, deleted: $deletedRows)")
         } catch {
+          case e: FileNotFoundException =>
+          // Direct file-not-found exception.
+          case e: NoSuchFileException =>
+          // NIO equivalent of FileNotFoundException.
+          case e: Exception if hasCauseOfType(e, classOf[FileNotFoundException]) ||
+              hasCauseOfType(e, classOf[NoSuchFileException]) =>
+          // Wrapped file-not-found in the cause chain (e.g., SparkException wrapping).
           case e: Exception
               if e.getMessage != null &&
                 (e.getMessage.contains("FileNotFoundException") ||
                   e.getMessage.contains("No such file") ||
                   e.getMessage.contains("Path does not exist") ||
                   e.getMessage.contains("does not exist")) =>
-          // Acceptable: the scan failed because the deleted file is no longer accessible.
-          // The important thing is that it does not silently return wrong data.
+          // Fallback: message-based matching for FS implementations that use
+          // custom exception types (e.g., Hadoop, Velox native errors).
         }
     }
   }
