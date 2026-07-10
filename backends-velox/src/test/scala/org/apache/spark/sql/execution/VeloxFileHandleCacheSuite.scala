@@ -259,7 +259,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
   }
 
   testWithSpecifiedSparkVersion(
-    "TTL-based eviction: scans succeed after cached handles expire",
+    "scans remain correct after TTL expiration window",
     "3.5",
     "3.5") {
     // Correctness guard: verify that scans produce correct results after the
