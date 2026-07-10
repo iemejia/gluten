@@ -156,9 +156,9 @@ function apply_compilation_fixes {
   if [ "$OS" == "Linux" ]; then
     SUDO_CMD="sudo"
   fi
-  $SUDO_CMD cp ${CURRENT_DIR}/modify_arrow.patch ${VELOX_HOME}/CMake/resolve_dependency_modules/arrow/
+  $SUDO_CMD cp "${CURRENT_DIR}/modify_arrow.patch" "${VELOX_HOME}/CMake/resolve_dependency_modules/arrow/"
 
-  git add ${VELOX_HOME}/CMake/resolve_dependency_modules/arrow/modify_arrow.patch # to avoid the file from being deleted by git clean -dffx :/
+  git add "${VELOX_HOME}/CMake/resolve_dependency_modules/arrow/modify_arrow.patch" # to avoid the file from being deleted by git clean -dffx :/
 
   # Wire file handle cache TTL config to SimpleLRUCache constructor.
   if [ -f "${CURRENT_DIR}/file-handle-cache-ttl.patch" ]; then
