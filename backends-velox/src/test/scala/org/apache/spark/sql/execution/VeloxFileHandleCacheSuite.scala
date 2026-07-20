@@ -55,10 +55,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
       .set(VeloxConfig.COLUMNAR_VELOX_NUM_CACHE_FILE_HANDLES.key, "10000")
   }
 
-  testWithSpecifiedSparkVersion(
-    "basic scan correctness with file handle cache enabled",
-    "3.5",
-    "3.5") {
+  test("basic scan correctness with file handle cache enabled") {
     // Verify that enabling file handle cache produces correct scan results
     withTempPath {
       dir =>
@@ -84,10 +81,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
     }
   }
 
-  testWithSpecifiedSparkVersion(
-    "repeated scans produce consistent results",
-    "3.5",
-    "3.5") {
+  test("repeated scans produce consistent results") {
     // Repeated scans of the same files must produce identical results regardless
     // of whether handles are served from cache or re-opened after TTL eviction.
     withTempPath {
@@ -125,10 +119,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
     }
   }
 
-  testWithSpecifiedSparkVersion(
-    "many small files do not cause errors with file handle cache",
-    "3.5",
-    "3.5") {
+  test("many small files do not cause errors with file handle cache") {
     // Verify that scanning many small files with caching enabled does not cause
     // file descriptor exhaustion or other resource-related errors.
     withTempPath {
@@ -157,10 +148,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
     }
   }
 
-  testWithSpecifiedSparkVersion(
-    "filtered scan correctness with file handle cache",
-    "3.5",
-    "3.5") {
+  test("filtered scan correctness with file handle cache") {
     // Verify that predicate pushdown works correctly with cached file handles.
     // This exercises the row group skipping path through cached handles.
     withTempPath {
@@ -195,10 +183,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
     }
   }
 
-  testWithSpecifiedSparkVersion(
-    "scan after file deletion does not silently return wrong data",
-    "3.5",
-    "3.5") {
+  test("scan after file deletion does not silently return wrong data") {
     // If a file is deleted between scans, the next scan should either:
     // - Succeed with the original count (cached FD keeps inode alive on Linux)
     // - Succeed with a reduced count (deleted file not accessible)
@@ -259,10 +244,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
     }
   }
 
-  testWithSpecifiedSparkVersion(
-    "scans remain correct after TTL expiration window",
-    "3.5",
-    "3.5") {
+  test("scans remain correct after TTL expiration window") {
     // Correctness guard: verify that scans produce correct results after the
     // configured TTL (2s, set in sparkConf) has elapsed and cached handles may
     // have been evicted. This does NOT directly assert that eviction occurred
@@ -303,10 +285,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
     }
   }
 
-  testWithSpecifiedSparkVersion(
-    "column pruning with cached file handles",
-    "3.5",
-    "3.5") {
+  test("column pruning with cached file handles") {
     // Verify that column pruning works correctly when file handles are cached.
     // The cache key includes the file path but not the projected columns, so
     // different projections on the same file must still work correctly.
