@@ -34,9 +34,12 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
   override protected val resourcePath: String = "/parquet-for-read"
   override protected val fileFormat: String = "parquet"
 
-  // TTL for file handle cache eviction (used in sparkConf and sleep calculations)
-  private val ttlMs = 2000
-  private val ttlWaitMs = ttlMs + 1000 // TTL + buffer for eviction to take effect
+  // TTL for file handle cache eviction (used in sparkConf and sleep calculations).
+  // Kept small to minimize CI time; the TTL test only asserts scan correctness after
+  // the window elapses (it passes whether or not eviction has occurred), so a short
+  // wait is sufficient and does not introduce flakiness.
+  private val ttlMs = 500
+  private val ttlWaitMs = ttlMs + 500 // TTL + buffer for lazy eviction on next access
 
   /** Walks the exception cause chain looking for an instance of the given type. */
   private def hasCauseOfType(e: Throwable, cls: Class[_ <: Throwable]): Boolean = {
@@ -246,7 +249,7 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
 
   test("scans remain correct after TTL expiration window") {
     // Correctness guard: verify that scans produce correct results after the
-    // configured TTL (2s, set in sparkConf) has elapsed and cached handles may
+    // configured TTL (set in sparkConf) has elapsed and cached handles may
     // have been evicted. This does NOT directly assert that eviction occurred
     // (Velox exposes no JVM-visible eviction counter), but it exercises the
     // re-open path: if a handle was evicted, the scan must transparently
