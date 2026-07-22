@@ -285,6 +285,48 @@ class VeloxFileHandleCacheSuite extends VeloxWholeStageTransformerSuite {
         assert(count2 == 5000, s"Count mismatch after TTL expiration: expected 5000, got $count2")
         val sum2 = spark.read.parquet(path).selectExpr("sum(id)").collect()(0).getLong(0)
         assert(sum2 == sum1, s"Sum mismatch after TTL expiration: expected $sum1, got $sum2")
+
+        // Best-effort eviction probe: delete a file, wait past the TTL, then scan
+        // again. This drives the "cached handle expired -> re-open" path for a file
+        // that no longer exists. We cannot assert that eviction definitively
+        // occurred (Velox exposes no JVM-visible eviction counter, and on Linux a
+        // still-cached FD keeps the unlinked inode readable), so we assert the only
+        // invariant that must always hold: the scan must NOT silently return
+        // corrupted data. It must return either the full count (FD kept the inode
+        // alive), a reduced count (handle was evicted and the file is gone), or
+        // throw a file-not-found error.
+        val parquetFiles = dir.listFiles().filter(_.getName.endsWith(".parquet"))
+        assert(parquetFiles.nonEmpty)
+        val deletedFile = parquetFiles.head
+        val deletedRows = spark.read.parquet(deletedFile.getCanonicalPath).count()
+        assert(deletedFile.delete(), s"Failed to delete ${deletedFile.getCanonicalPath}")
+
+        Thread.sleep(ttlWaitMs)
+
+        try {
+          val count3 = spark.read.parquet(path).count()
+          assert(
+            count3 == count2 || count3 == count2 - deletedRows,
+            s"Unexpected count after TTL + deletion: $count3 " +
+              s"(pre-deletion: $count2, deleted: $deletedRows)")
+        } catch {
+          case e: FileNotFoundException =>
+          // Direct file-not-found exception.
+          case e: NoSuchFileException =>
+          // NIO equivalent of FileNotFoundException.
+          case e: Exception
+              if hasCauseOfType(e, classOf[FileNotFoundException]) ||
+                hasCauseOfType(e, classOf[NoSuchFileException]) =>
+          // Wrapped file-not-found in the cause chain (e.g., SparkException wrapping).
+          case e: Exception
+              if e.getMessage != null &&
+                (e.getMessage.contains("FileNotFoundException") ||
+                  e.getMessage.contains("No such file") ||
+                  e.getMessage.contains("Path does not exist") ||
+                  e.getMessage.contains("does not exist")) =>
+          // Fallback: message-based matching for FS implementations that use
+          // custom exception types (e.g., Hadoop, Velox native errors).
+        }
     }
   }
 

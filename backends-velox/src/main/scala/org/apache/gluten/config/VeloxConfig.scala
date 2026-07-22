@@ -535,9 +535,11 @@ object VeloxConfig extends ConfigRegistry {
   val COLUMNAR_VELOX_FILE_HANDLE_CACHE_ENABLED =
     buildStaticConf("spark.gluten.sql.columnar.backend.velox.fileHandleCacheEnabled")
       .doc(
-        "Enables caching of file handles to avoid repeated open/close overhead on remote " +
-          "filesystems. Should be disabled if files are mutable, i.e. file content may " +
-          "change while file path stays the same.")
+        "Enables caching of open file handles to avoid repeated open/close overhead. " +
+          "Benefits both local filesystems (fewer open/close syscalls and file descriptor " +
+          "churn) and remote filesystems/object stores (reused connection state). Should be " +
+          "disabled if files are mutable, i.e. file content may change while the file path " +
+          "stays the same.")
       .booleanConf
       .createWithDefault(true)
 
@@ -557,13 +559,14 @@ object VeloxConfig extends ConfigRegistry {
   val COLUMNAR_VELOX_FILE_HANDLE_EXPIRATION_DURATION_MS =
     buildStaticConf("spark.gluten.sql.columnar.backend.velox.fileHandleExpirationDurationMs")
       .doc(
-        "Expiration time in milliseconds for cached file handles. Handles not accessed " +
-          "within this duration are evicted from the cache. This prevents stale handles " +
-          "from accumulating (e.g., expired HDFS leases, closed remote connections). " +
-          "A value of 0 disables TTL-based eviction.")
+        "Expiration time for cached file handles. Handles not accessed within this duration " +
+          "are evicted from the cache. This prevents stale handles from accumulating (e.g., " +
+          "expired HDFS leases, closed remote connections). Accepts a Spark duration string " +
+          "(e.g., \"10m\", \"600s\") or a plain number interpreted as milliseconds. A value " +
+          "of 0 disables TTL-based eviction.")
       .timeConf(TimeUnit.MILLISECONDS)
       .checkValue(_ >= 0, "must be a non-negative number (0 disables TTL-based eviction)")
-      .createWithDefault(600000L) // 10 minutes
+      .createWithDefaultString("10m")
 
   val DIRECTORY_SIZE_GUESS =
     buildStaticConf("spark.gluten.sql.columnar.backend.velox.directorySizeGuess")
